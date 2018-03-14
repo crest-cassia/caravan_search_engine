@@ -1,3 +1,7 @@
+import pickle
+from .parameter_set import ParameterSet
+from .run import Run
+
 class Tables:
 
     _instance = None
@@ -20,24 +24,20 @@ class Tables:
 
     @classmethod
     def pack(cls,path):
-        import msgpack
         t = cls.get()
         ps_dict = [ps.to_dict() for ps in t.ps_table]
         run_dict = [r.to_dict() for r in t.runs_table]
         obj = {"parameter_sets": ps_dict, "runs": run_dict}
         with open(path, 'wb') as f:
-            msgpack.pack(obj, f, use_bin_type=True)
+            pickle.dump(obj, f)
             f.flush()
 
     @classmethod
     def unpack(cls,path):
-        import msgpack
-        from .parameter_set import ParameterSet
-        from .run import Run
         t = cls.get()
         t.clear()
         with open(path, 'rb') as f:
-            obj = msgpack.unpack(f, encoding='utf-8')
+            obj = pickle.load(f)
             t.ps_table = [ ParameterSet.new_from_dict(o) for o in obj["parameter_sets"] ]
             t.runs_table = [ Run.new_from_dict(o) for o in obj["runs"] ]
         return t
@@ -53,7 +53,7 @@ if __name__ == "__main__":
         print( t.dumps() )
     else:
         sys.stderr.write("[Error] invalid number of arguments\n")
-        sys.stderr.write("  Usage: python %s <msgpack file>\n")
+        sys.stderr.write("  Usage: python %s <pickle file>\n")
         sys.stderr.write("    it will print the data to stdout\n")
         raise RuntimeError("Invalid number of arguments")
 
