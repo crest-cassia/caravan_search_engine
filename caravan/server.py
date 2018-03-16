@@ -1,6 +1,9 @@
 import sys,logging,os
 from collections import defaultdict
-import fibers
+try:
+    from fibers import Fiber
+except ImportError:
+    from .pseudo_fiber import Fiber
 from .run import Run
 from .parameter_set import ParameterSet
 
@@ -28,7 +31,7 @@ class Server(object):
         return cls._instance
 
     def __enter__(self):
-        self._loop_fiber = fibers.Fiber(target=self._loop)
+        self._loop_fiber = Fiber(target=self._loop)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
@@ -52,13 +55,13 @@ class Server(object):
         def _f():
             func(*args, **kwargs)
             self._loop_fiber.switch()
-        fb = fibers.Fiber(target=_f)
+        fb = Fiber(target=_f)
         self._fibers.append(fb)
 
     @classmethod
     def await_ps(cls, ps):
         self = cls.get()
-        fb = fibers.Fiber.current()
+        fb = Fiber.current()
         def _callback(ps):
             self._fibsers.append(fb)
         cls.watch_ps(ps, _callback)
@@ -67,7 +70,7 @@ class Server(object):
     @classmethod
     def await_all_ps(cls, ps_set):
         self = cls.get()
-        fb = fibers.Fiber.current()
+        fb = Fiber.current()
         def _callback(pss):
             self._fibers.append(fb)
         cls.watch_all_ps(ps_set, _callback)
