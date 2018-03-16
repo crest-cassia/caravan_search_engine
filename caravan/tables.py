@@ -1,6 +1,4 @@
 import pickle
-from .parameter_set import ParameterSet
-from .run import Run
 
 class Tables:
 
@@ -34,6 +32,8 @@ class Tables:
 
     @classmethod
     def unpack(cls,path):
+        from .parameter_set import ParameterSet
+        from .run import Run
         t = cls.get()
         t.clear()
         with open(path, 'rb') as f:

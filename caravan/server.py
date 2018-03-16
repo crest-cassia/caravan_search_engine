@@ -1,8 +1,6 @@
-import sys
-import logging,os
+import sys,logging,os
 from collections import defaultdict
-from threading import Thread
-from queue import Queue
+import fibers
 from .run import Run
 from .parameter_set import ParameterSet
 
@@ -13,16 +11,30 @@ class Server(object):
     @classmethod
     def get(cls):
         if cls._instance is None:
-            cls._instance = cls()
+            raise Exception("use Server.start() method")
         return cls._instance
 
-    def __init__(self, logger = None):
+    def __init__(self, map_func, logger = None):
         self.observed_ps = defaultdict(list)
         self.observed_all_ps = defaultdict(list)
         self.max_submitted_run_id = 0
         self._logger = logger or self._default_logger()
-        self._threads = []
-        self._q = Queue()
+        self.map_func = map_func
+        self._fibers = []
+
+    @classmethod
+    def start(cls, map_func, logger = None):
+        cls._instance = cls(map_func, logger)
+        return cls._instance
+
+    def __enter__(self):
+        self._loop_fiber = fibers.Fiber(target=self._loop)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            return False   # re-raise exception
+        if self._loop_fiber.is_alive():
+            self._loop_fiber.switch()
 
     @classmethod
     def watch_ps(cls, ps, callback):
@@ -36,43 +48,33 @@ class Server(object):
 
     @classmethod
     def async(cls, func, *args, **kwargs):
-        q = cls.get()._q
+        self = cls.get()
         def _f():
-            try:
-                func(*args, **kwargs)
-            except:
-                q.put(sys.exc_info())
-            else:
-                q.put(0)
-        t = Thread(target=_f)
-        t.daemon = True
-        cls.get()._threads.append(t)
+            func(*args, **kwargs)
+            self._loop_fiber.switch()
+        fb = fibers.Fiber(target=_f)
+        self._fibers.append(fb)
 
     @classmethod
     def await_ps(cls, ps):
-        local_q = Queue()
+        self = cls.get()
+        fb = fibers.Fiber.current()
         def _callback(ps):
-            local_q.put(0)
-            cls.get()._get_from_global_q()
+            self._fibsers.append(fb)
         cls.watch_ps(ps, _callback)
-        cls.get()._q.put(0)
-        local_q.get()
+        self._loop_fiber.switch()
 
     @classmethod
     def await_all_ps(cls, ps_set):
-        local_q = Queue()
-        def _callback(pss):
-            local_q.put(0)
-            cls.get()._get_from_global_q()
-        cls.watch_all_ps(ps_set, _callback)
-        cls.get()._q.put(0)
-        local_q.get()
-
-    @classmethod
-    def loop(cls, map_func):
         self = cls.get()
-        self.map_func = map_func
-        self._launch_all_threads()
+        fb = fibers.Fiber.current()
+        def _callback(pss):
+            self._fibers.append(fb)
+        cls.watch_all_ps(ps_set, _callback)
+        self._loop_fiber.switch()
+
+    def _loop(self):
+        self._launch_all_fibers()
         self._submit_all()
         self._logger.debug("start polling")
         r = self._receive_result()
@@ -82,16 +84,6 @@ class Server(object):
                 self._exec_callback()
             self._submit_all()
             r = self._receive_result()
-
-    def _get_from_global_q(self):
-        q = self._q
-        ret = q.get()
-        if ret != 0:
-            exc_type, exc_obj, exc_trace = ret
-            self._logger.error(exc_type)
-            self._logger.error(exc_obj)
-            self._logger.error(exc_trace)
-            raise exc_obj
 
     def _default_logger(self):
         logger = logging.getLogger(__name__)
@@ -131,12 +123,11 @@ class Server(object):
             sys.stdout.write(line)
         sys.stdout.write("\n")
 
-    def _launch_all_threads(self):
-        while self._threads:
-            t = self._threads.pop(0)
-            self._logger.debug("starting thread")
-            t.start()
-            self._get_from_global_q()
+    def _launch_all_fibers(self):
+        while self._fibers:
+            f = self._fibers.pop(0)
+            self._logger.debug("starting fiber")
+            f.switch()
 
     def _exec_callback(self):
         while self._check_completed_ps() or self._check_completed_ps_all():
@@ -151,7 +142,7 @@ class Server(object):
                 self._logger.debug("executing callback for ParameterSet %d" % ps.id)
                 f = callbacks.pop(0)
                 f(ps)
-                self._launch_all_threads()
+                self._launch_all_fibers()
                 executed = True
         empty_keys = [k for k,v in self.observed_ps.items() if len(v)==0 ]
         for k in empty_keys:
@@ -167,7 +158,7 @@ class Server(object):
                 self._logger.debug("executing callback for ParameterSet %s" % repr(psids))
                 f = callbacks.pop(0)
                 f(pss)
-                self._launch_all_threads()
+                self._launch_all_fibers()
                 executed = True
         empty_keys = [k for k,v in self.observed_all_ps.items() if len(v) == 0]
         for k in empty_keys: self.observed_all_ps.pop(k)
