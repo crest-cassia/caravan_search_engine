@@ -24,10 +24,15 @@ class Server(object):
         self._logger = logger or self._default_logger()
         self.map_func = map_func
         self._fibers = []
+        self._out = None
 
     @classmethod
-    def start(cls, map_func, logger = None):
+    def start(cls, map_func, logger = None, redirect_stdout = False):
         cls._instance = cls(map_func, logger)
+        cls._instance._out = os.fdopen(sys.stdout.fileno(), mode='w', buffering=1)
+        sys.stdin = os.fdopen(sys.stdin.fileno(), mode='r', buffering=1)
+        if redirect_stdout:
+            sys.stdout = sys.stderr
         return cls._instance
 
     def __enter__(self):
@@ -123,8 +128,8 @@ class Server(object):
     def _print_tasks(self,runs):
         for r in runs:
             line = "%d %s\n" % (r.id, self.map_func( r.parameter_set().params, r.seed ))
-            sys.stdout.write(line)
-        sys.stdout.write("\n")
+            self._out.write(line)
+        self._out.write("\n")
 
     def _launch_all_fibers(self):
         while self._fibers:
