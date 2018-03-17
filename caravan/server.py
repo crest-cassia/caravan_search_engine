@@ -4,7 +4,7 @@ try:
     from fibers import Fiber
 except ImportError:
     from .pseudo_fiber import Fiber
-from .run import Run
+from .task import Task
 from .parameter_set import ParameterSet
 
 class Server(object):
@@ -17,18 +17,17 @@ class Server(object):
             raise Exception("use Server.start() method")
         return cls._instance
 
-    def __init__(self, map_func, logger = None):
+    def __init__(self, logger = None):
         self.observed_ps = defaultdict(list)
         self.observed_all_ps = defaultdict(list)
-        self.max_submitted_run_id = 0
+        self.max_submitted_task_id = 0
         self._logger = logger or self._default_logger()
-        self.map_func = map_func
         self._fibers = []
         self._out = None
 
     @classmethod
-    def start(cls, map_func, logger = None, redirect_stdout = False):
-        cls._instance = cls(map_func, logger)
+    def start(cls, logger = None, redirect_stdout = False):
+        cls._instance = cls(logger)
         cls._instance._out = os.fdopen(sys.stdout.fileno(), mode='w', buffering=1)
         sys.stdin = os.fdopen(sys.stdin.fileno(), mode='r', buffering=1)
         if redirect_stdout:
@@ -113,21 +112,21 @@ class Server(object):
     def _has_callbacks(self):
         return ( len( self.observed_ps ) + len( self.observed_all_ps ) ) > 0
 
-    def _has_unfinished_runs(self):
-        for r in Run.all()[:self.max_submitted_run_id]:
+    def _has_unfinished_tasks(self):
+        for r in Task.all()[:self.max_submitted_task_id]:
             if not r.is_finished():
                 return True
         return False
 
     def _submit_all(self):
-        runs_to_be_submitted = [r for r in Run.all()[self.max_submitted_run_id:] if not r.is_finished()]
-        self._logger.debug("submitting %d Runs" % len(runs_to_be_submitted))
-        self._print_tasks(runs_to_be_submitted)
-        self.max_submitted_run_id = len(Run.all())
+        tasks_to_be_submitted = [t for t in Task.all()[self.max_submitted_task_id:] if not t.is_finished()]
+        self._logger.debug("submitting %d Tasks" % len(tasks_to_be_submitted))
+        self._print_tasks(tasks_to_be_submitted)
+        self.max_submitted_task_id = len(Task.all())
 
-    def _print_tasks(self,runs):
-        for r in runs:
-            line = "%d %s\n" % (r.id, self.map_func( r.parameter_set().params, r.seed ))
+    def _print_tasks(self,tasks):
+        for t in tasks:
+            line = "%d %s\n" % (t.id, t.command)
             self._out.write(line)
         self._out.write("\n")
 
@@ -179,12 +178,12 @@ class Server(object):
         self._logger.debug("received: %s" % line)
         if not line: return None
         l = line.split(' ')
-        rid,rc,place_id,start_at,finish_at = [ int(x) for x in l[:5] ]
+        tid,rc,place_id,start_at,finish_at = [ int(x) for x in l[:5] ]
         results = [ float(x) for x in l[5:] ]
-        r = Run.find(rid)
-        r.store_result( results, rc, place_id, start_at, finish_at )
-        self._logger.debug("stored result of Run %d" % rid)
-        return r
+        t = Task.find(tid)
+        t.store_result(results, rc, place_id, start_at, finish_at)
+        self._logger.debug("stored result of Task %d" % tid)
+        return t
 
     def _debug(self):
         sys.stderr.write(str(self.observed_ps)+"\n")

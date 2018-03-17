@@ -14,23 +14,11 @@ class Tables:
         if self.__class__._instance is not None:
             raise "do not call constructor directly"
         self.ps_table = []
-        self.runs_table = []
+        self.tasks_table = []
 
     def clear(self):
         self.ps_table = []
-        self.runs_table = []
-
-    @classmethod
-    def dump(cls,path):
-        with open(path, 'wb') as f:
-            pickle.dump(cls.get(), f)
-            f.flush()
-
-    @classmethod
-    def load(cls,path):
-        with open(path, 'rb') as f:
-            obj = pickle.load(path)
-            cls._instance = obj
+        self.tasks_table = []
 
     def dumps(self):
         ps_str = ",\n".join([ps.dumps() for ps in self.ps_table])

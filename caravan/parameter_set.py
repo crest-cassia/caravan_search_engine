@@ -3,11 +3,20 @@ from . import run
 from . import tables
 
 class ParameterSet:
+    command_func = None
 
     def __init__(self, ps_id, params):
         self.id = ps_id
         self.params = params
         self.run_ids = []
+
+    @classmethod
+    def set_command_func(cls, f):
+        cls.command_func = f
+
+    def make_command(self, seed):
+        f = self.__class__.command_func
+        return f(self.params, seed)
 
     @classmethod
     def create(cls, params):
@@ -28,11 +37,10 @@ class ParameterSet:
         return self.runs()[:target_num]
 
     def runs(self):
-        return [tables.Tables.get().runs_table[rid] for rid in self.run_ids]
+        return [tables.Tables.get().tasks_table[rid] for rid in self.run_ids]
 
     def finished_runs(self):
-        t = tables.Tables.get()
-        return [t.runs_table[rid] for rid in self.run_ids if t.runs_table[rid].is_finished()]
+        return [r for r in self.runs() if r.is_finished()]
 
     def is_finished(self):
         return all([r.is_finished() for r in self.runs()])

@@ -1,61 +1,54 @@
 from collections import OrderedDict
 import json
 from . import tables
+from .task import Task
 
-class Run:
+
+class Run(Task):
 
     def __init__(self, run_id, ps_id, seed):
-        self.id = run_id
+        super().__init__(run_id, None)
         self.ps_id = ps_id
         self.seed = seed
-        self.rc = None
-        self.place_id = None
-        self.start_at = None
-        self.finish_at = None
-        self.results = None
 
     @classmethod
     def create(cls, ps):
         t = tables.Tables.get()
         next_seed = len(ps.run_ids)
-        next_id = len(t.runs_table)
+        next_id = len(t.tasks_table)
         r = cls(next_id, ps.id, next_seed)
         ps.run_ids.append(r.id)
-        t.runs_table.append(r)
+        t.tasks_table.append(r)
 
-    def is_finished(self):
-        return not (self.rc is None)
+    @property
+    def command(self):
+        ps = self.parameter_set()
+        return ps.make_command(self.seed)
 
     def parameter_set(self):
         return tables.Tables.get().ps_table[self.ps_id]
-
-    def store_result(self, results, rc, place_id, start_at, finish_at):
-        self.results = results
-        self.rc = rc
-        self.place_id = place_id
-        self.start_at = start_at
-        self.finish_at = finish_at
 
     def to_dict(self):
         o = OrderedDict()
         o["id"] = self.id
         o["ps_id"] = self.ps_id
         o["seed"] = self.seed
-        o["rc"] = self.rc
-        o["place_id"] = self.place_id
-        o["start_at"] = self.start_at
-        o["finish_at"] = self.finish_at
-        o["results"] = self.results
+        if self.rc:
+            o["rc"] = self.rc
+            o["place_id"] = self.place_id
+            o["start_at"] = self.start_at
+            o["finish_at"] = self.finish_at
+            o["results"] = self.results
         return o
 
     @classmethod
     def all(cls):
-        return tables.Tables.get().runs_table
+        return [t for t in tables.Tables.get().tasks_table if isinstance(t,cls)]
 
     @classmethod
     def find(cls,id):
-        return tables.Tables.get().runs_table[id]
+        return tables.Tables.get().tasks_table[id]
 
     def dumps(self):
-        return json.dumps( self.to_dict() )
+        return json.dumps(self.to_dict())
 
