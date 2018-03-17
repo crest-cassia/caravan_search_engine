@@ -5,6 +5,7 @@ try:
 except ImportError:
     from .pseudo_fiber import Fiber
 from .task import Task
+from .run import Run
 from .parameter_set import ParameterSet
 
 class Server(object):
@@ -84,13 +85,14 @@ class Server(object):
         self._launch_all_fibers()
         self._submit_all()
         self._logger.debug("start polling")
-        r = self._receive_result()
-        while r:
-            ps = r.parameter_set()
-            if ps.is_finished():
-                self._exec_callback()
+        t = self._receive_result()
+        while t:
+            if isinstance(t, Run):
+                ps = t.parameter_set()
+                if ps.is_finished():
+                    self._exec_callback()
             self._submit_all()
-            r = self._receive_result()
+            t = self._receive_result()
 
     def _default_logger(self):
         logger = logging.getLogger(__name__)
