@@ -16,10 +16,11 @@ class Task:
 
     @classmethod
     def create(cls, cmd):
-        t = tables.Tables.get()
-        next_id = len(t.tasks_table)
-        r = cls(next_id, cmd)
-        t.tasks_table.append(r)
+        tab = tables.Tables.get()
+        next_id = len(tab.tasks_table)
+        t = cls(next_id, cmd)
+        tab.tasks_table.append(t)
+        return t
 
     def is_finished(self):
         return not (self.rc is None)

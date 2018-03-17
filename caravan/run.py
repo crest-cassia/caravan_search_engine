@@ -19,6 +19,7 @@ class Run(Task):
         r = cls(next_id, ps.id, next_seed)
         ps.run_ids.append(r.id)
         t.tasks_table.append(r)
+        return r
 
     @property
     def command(self):
