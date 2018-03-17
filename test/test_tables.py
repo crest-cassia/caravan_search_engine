@@ -1,5 +1,4 @@
 import unittest
-import pickle
 import os.path
 from caravan.tables import Tables
 from caravan.parameter_set import ParameterSet
@@ -23,12 +22,9 @@ class TestTables(unittest.TestCase):
 
     def test_dump_empty(self):
         path = self.dump_path
-        with open(path, 'wb') as f:
-            pickle.dump(self.t, f)
-            f.flush()
+        Tables.dump(path)
         self.assertTrue( os.path.exists(path) )
-        with open(path, 'rb') as f:
-            self.t = pickle.load(f)
+        Tables.load(path)
         self.assertEqual( len(self.t.ps_table), 0 )
 
     def test_dump(self):
@@ -42,13 +38,11 @@ class TestTables(unittest.TestCase):
         self.assertEqual( len(self.t.tasks_table), 6 )
 
         path = self.dump_path
-        with open(path, 'wb') as f:
-            pickle.dump(self.t, f)
-            f.flush()
+        Tables.dump(path)
         self.assertTrue( os.path.exists(path) )
         self.t.clear()
-        with open(path, 'rb') as f:
-            self.t = pickle.load(f)
+        Tables.load(path)
+        self.t = Tables.get()
         self.assertEqual( len(self.t.ps_table), 2 )
         self.assertEqual( len(self.t.tasks_table), 6 )
         self.assertTrue( self.t.tasks_table[0].is_finished() )

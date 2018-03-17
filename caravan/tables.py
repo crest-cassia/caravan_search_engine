@@ -22,6 +22,16 @@ class Tables:
         self.param_ps_dict = {}
         self.tasks_table = []
 
+    @classmethod
+    def dump(cls, path):
+        with open(path, 'wb') as f:
+            pickle.dump(cls._instance, f)
+
+    @classmethod
+    def load(cls, path):
+        with open(path, 'rb') as f:
+            cls._instance = pickle.load(f)
+
     def dumps(self):
         ps_str = ",\n".join([ps.dumps() for ps in self.ps_table])
         return "[\n%s\n]\n" % ps_str
