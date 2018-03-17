@@ -19,10 +19,10 @@ class ParameterSet:
         return f(self.params, seed)
 
     @classmethod
-    def create(cls, params):
+    def create(cls, *params):
         t = tables.Tables.get()
         next_id = len(t.ps_table)
-        ps = cls(next_id, params)
+        ps = cls(next_id, tuple(params))
         t.ps_table.append(ps)
         return ps
 
