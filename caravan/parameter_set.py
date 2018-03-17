@@ -19,12 +19,17 @@ class ParameterSet:
         return f(self.params, seed)
 
     @classmethod
-    def create(cls, *params):
+    def find_or_create(cls, *params):
         t = tables.Tables.get()
-        next_id = len(t.ps_table)
-        ps = cls(next_id, tuple(params))
-        t.ps_table.append(ps)
-        return ps
+        prm = tuple(params)
+        if prm in t.param_ps_dict:
+            return t.param_ps_dict[prm]
+        else:
+            next_id = len(t.ps_table)
+            ps = cls(next_id, prm)
+            t.ps_table.append(ps)
+            t.param_ps_dict[prm] = ps
+            return ps
 
     def create_runs(self, num_runs):
         created = [run.Run.create(self) for _ in range(num_runs)]

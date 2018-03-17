@@ -32,10 +32,10 @@ class TestTables(unittest.TestCase):
         self.assertEqual( len(self.t.ps_table), 0 )
 
     def test_dump(self):
-        ps = ParameterSet.create((0,1,2,3))
+        ps = ParameterSet.find_or_create((0, 1, 2, 3))
         runs = ps.create_runs_upto(3)
         runs[0].store_result([1.0, 2.0, 3.0], 0, 3, 111, 222)
-        ps = ParameterSet.create((4,5,6,7))
+        ps = ParameterSet.find_or_create((4, 5, 6, 7))
         self.assertEqual( len(self.t.ps_table), 2 )
         runs = ps.create_runs_upto(3)
         runs[2].store_result([1.0, 2.0, 3.0], 0, 3, 111, 222)
