@@ -18,18 +18,7 @@ class ParameterSet:
         return ps
 
     def create_runs(self, num_runs):
-        t = tables.Tables.get()
-        def create_a_run():
-            next_seed = len(self.run_ids)
-            next_id = len(t.runs_table)
-            r = run.Run(next_id, self.id, next_seed)
-            self.run_ids.append(r.id)
-            t.runs_table.append(r)
-            return r
-        created = []
-        for i in range(num_runs):
-            r = create_a_run()
-            created.append(r)
+        created = [run.Run.create(self) for _ in range(num_runs)]
         return created
 
     def create_runs_upto(self, target_num):
@@ -67,12 +56,6 @@ class ParameterSet:
         o["params"] = self.params
         o["run_ids"] = self.run_ids
         return o
-
-    @classmethod
-    def new_from_dict(cls, o):
-        ps = cls( o["id"], o["params"])
-        ps.run_ids = o["run_ids"]
-        return ps
 
     @classmethod
     def all(cls):

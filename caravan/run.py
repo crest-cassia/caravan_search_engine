@@ -14,6 +14,15 @@ class Run:
         self.finish_at = None
         self.results = None
 
+    @classmethod
+    def create(cls, ps):
+        t = tables.Tables.get()
+        next_seed = len(ps.run_ids)
+        next_id = len(t.runs_table)
+        r = cls(next_id, ps.id, next_seed)
+        ps.run_ids.append(r.id)
+        t.runs_table.append(r)
+
     def is_finished(self):
         return not (self.rc is None)
 
@@ -38,12 +47,6 @@ class Run:
         o["finish_at"] = self.finish_at
         o["results"] = self.results
         return o
-
-    @classmethod
-    def new_from_dict(cls, o):
-        r = cls( o["id"], o["ps_id"], o["seed"] )
-        r.store_result(o["results"], o["rc"], o["place_id"], o["start_at"], o["finish_at"])
-        return r
 
     @classmethod
     def all(cls):

@@ -21,36 +21,26 @@ class Tables:
         self.runs_table = []
 
     @classmethod
-    def pack(cls,path):
-        t = cls.get()
-        ps_dict = [ps.to_dict() for ps in t.ps_table]
-        run_dict = [r.to_dict() for r in t.runs_table]
-        obj = {"parameter_sets": ps_dict, "runs": run_dict}
+    def dump(cls,path):
         with open(path, 'wb') as f:
-            pickle.dump(obj, f)
+            pickle.dump(cls.get(), f)
             f.flush()
 
     @classmethod
-    def unpack(cls,path):
-        from .parameter_set import ParameterSet
-        from .run import Run
-        t = cls.get()
-        t.clear()
+    def load(cls,path):
         with open(path, 'rb') as f:
-            obj = pickle.load(f)
-            t.ps_table = [ ParameterSet.new_from_dict(o) for o in obj["parameter_sets"] ]
-            t.runs_table = [ Run.new_from_dict(o) for o in obj["runs"] ]
-        return t
+            obj = pickle.load(path)
+            cls._instance = obj
 
     def dumps(self):
-        ps_str = ",\n".join( [ ps.dumps() for ps in self.ps_table ])
+        ps_str = ",\n".join([ps.dumps() for ps in self.ps_table])
         return "[\n%s\n]\n" % ps_str
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) == 2:
-        t = Tables.unpack(sys.argv[1])
-        print( t.dumps() )
+        t = Tables.load(sys.argv[1])
+        print(t.dumps())
     else:
         sys.stderr.write("[Error] invalid number of arguments\n")
         sys.stderr.write("  Usage: python %s <pickle file>\n")
