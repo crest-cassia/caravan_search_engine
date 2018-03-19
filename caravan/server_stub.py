@@ -1,4 +1,5 @@
 from .server import Server
+from .task import Task
 
 class EventQueue:
 
@@ -33,7 +34,7 @@ class EventQueue:
 _queue = None
 _stub_simulator = None
 
-def start_stub(stub_simulator, num_proc = 1, logger = None):
+def start_stub(stub_simulator, num_proc = 1, logger = None, dump_path = 'tasks.bin'):
     global _queue, _stub_simulator
     _stub_simulator = stub_simulator
     Server._instance = Server(logger)
@@ -56,5 +57,11 @@ def start_stub(stub_simulator, num_proc = 1, logger = None):
         print(t.dumps())
         return t
     Server._receive_result = receive_result_stub
+
+    Server.org_exit = Server.__exit__
+    def _exit(self, exc_type, exc_val, exc_tb):
+        self.org_exit(exc_type, exc_val, exc_tb)
+        Task.dump_binary(dump_path)
+    Server.__exit__ = _exit
     return Server._instance
 
