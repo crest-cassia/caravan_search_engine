@@ -36,7 +36,7 @@ class Task:
         o = OrderedDict()
         o["id"] = self.id
         o["command"] = self.command
-        if self.rc:
+        if self.rc is not None:
             o["rc"] = self.rc
             o["place_id"] = self.place_id
             o["start_at"] = self.start_at
@@ -54,4 +54,16 @@ class Task:
 
     def dumps(self):
         return json.dumps(self.to_dict())
+
+    @classmethod
+    def dump_binary(cls, path):
+        import struct
+        with open(path, 'wb') as f:
+            for t in cls.all():
+                print(t.dumps())
+                num_results = len(t.results)
+                fmt = ">6q%dd" % num_results
+                bytes = struct.pack(fmt, t.id, t.rc, t.place_id, t.start_at, t.finish_at, len(t.results), *t.results)
+                f.write(bytes)
+            f.flush()
 

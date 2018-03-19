@@ -34,7 +34,8 @@ class Tables:
 
     def dumps(self):
         ps_str = ",\n".join([ps.dumps() for ps in self.ps_table])
-        return "[\n%s\n]\n" % ps_str
+        task_str = ",\n".join([task.dumps() for task in self.tasks_table])
+        return "PS: [\n%s\n],\nTasks: [\n%s\n]\n" % (ps_str, task_str)
 
 if __name__ == "__main__":
     import sys
