@@ -21,6 +21,8 @@ class Server(object):
     def __init__(self, logger = None):
         self.observed_ps = defaultdict(list)
         self.observed_all_ps = defaultdict(list)
+        self.observed_task = defaultdict(list)
+        self.observed_all_tasks = defaultdict(list)  # (task_id) => list of (task_ids, callback)
         self.max_submitted_task_id = 0
         self._logger = logger or self._default_logger()
         self._fibers = []
@@ -46,13 +48,24 @@ class Server(object):
 
     @classmethod
     def watch_ps(cls, ps, callback):
-        cls.get().observed_ps[ ps.id ].append(callback)
+        cls.get().observed_ps[ps.id].append(callback)
 
     @classmethod
-    def watch_all_ps(cls, ps_set, callback ):
-        ids = [ ps.id for ps in ps_set ]
-        key = tuple( ids )
+    def watch_all_ps(cls, ps_set, callback):
+        ids = [ps.id for ps in ps_set]
+        key = tuple(ids)
         cls.get().observed_all_ps[key].append(callback)
+
+    @classmethod
+    def watch_task(cls, task, callback):
+        cls.get().observed_task[task.id].append(callback)
+
+    @classmethod
+    def watch_all_tasks(cls, tasks, callback):
+        key = tuple([t.id for t in tasks])
+        for t in tasks:
+            pair = (key, callback)
+            cls.get().observed_all_tasks[t.id].append(pair)
 
     @classmethod
     def async(cls, func, *args, **kwargs):
@@ -81,12 +94,32 @@ class Server(object):
         cls.watch_all_ps(ps_set, _callback)
         self._loop_fiber.switch()
 
+    @classmethod
+    def await_task(cls, task):
+        self = cls.get()
+        fb = Fiber.current()
+        def _callback(ps):
+            self._fibers.append(fb)
+        cls.watch_task(task, _callback)
+        self._loop_fiber.switch()
+
+    @classmethod
+    def await_all_tasks(cls, tasks):
+        self = cls.get()
+        fb = Fiber.current()
+        def _callback(ts):
+            self._fibers.append(fb)
+        cls.watch_all_tasks(tasks, _callback)
+        self._loop_fiber.switch()
+
     def _loop(self):
         self._launch_all_fibers()
         self._submit_all()
         self._logger.debug("start polling")
         t = self._receive_result()
         while t:
+            self._exec_callback_for_task(t)
+            self._exec_callback_for_all_task(t)
             if isinstance(t, Run):
                 ps = t.parameter_set()
                 if ps.is_finished():
@@ -171,6 +204,37 @@ class Server(object):
                 executed = True
         empty_keys = [k for k,v in self.observed_all_ps.items() if len(v) == 0]
         for k in empty_keys: self.observed_all_ps.pop(k)
+        return executed
+
+    def _exec_callback_for_task(self, task):
+        executed = False
+        callbacks = self.observed_task[task.id]
+        while len(callbacks) > 0:
+            self._logger.debug("executing callback for Task %d" % task.id)
+            f = callbacks.pop(0)
+            f(task)
+            self._launch_all_fibers()
+            executed = True
+        self.observed_task.pop(task.id)
+        return executed
+
+    def _exec_callback_for_all_task(self, task):
+        executed = False
+        callback_pairs = self.observed_all_tasks[task.id]
+        to_be_removed = []
+        for (idx,pair) in enumerate(callback_pairs):
+            task_ids = pair[0]
+            if all([Task.find(t).is_finished() for t in task_ids]):
+                self._logger.debug("executing callback for Tasks %s" % str(task_ids))
+                f = pair[1]
+                f(Task.find(t) for t in task_ids)
+                to_be_removed.append(idx)
+                self._launch_all_fibers()
+                executed = True
+        for idx in to_be_removed:
+            callback_pairs.pop(idx)
+        if len(callback_pairs) == 0:
+            self.observed_all_tasks.pop(task.id)
         return executed
 
     def _receive_result(self):

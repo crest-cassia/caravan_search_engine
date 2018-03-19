@@ -44,6 +44,10 @@ class Task:
             o["results"] = self.results
         return o
 
+    def add_callback(self, f):
+        from .server import Server
+        Server.watch_task(self, f)
+
     @classmethod
     def all(cls):
         return tables.Tables.get().tasks_table
