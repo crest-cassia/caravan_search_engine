@@ -26,7 +26,7 @@ class Task:
         return not (self.rc is None)
 
     def store_result(self, results, rc, place_id, start_at, finish_at):
-        self.results = results
+        self.results = tuple(results)
         self.rc = rc
         self.place_id = place_id
         self.start_at = start_at

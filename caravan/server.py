@@ -81,7 +81,7 @@ class Server(object):
         self = cls.get()
         fb = Fiber.current()
         def _callback(ps):
-            self._fibsers.append(fb)
+            self._fibers.append(fb)
         cls.watch_ps(ps, _callback)
         self._loop_fiber.switch()
 

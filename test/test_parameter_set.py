@@ -49,13 +49,13 @@ class ParameterSetTest(unittest.TestCase):
         self.assertTrue(ps.is_finished())
         self.assertEqual(len(ps.finished_runs()), 1)
 
-    def test_averaged_result(self):
+    def test_average_results(self):
         ps = ParameterSet.find_or_create(0, 1, 2, 3)
         runs = ps.create_runs_upto(3)
-        self.assertEqual(ps.averaged_result(), [])
+        self.assertEqual(ps.average_results(), ())
         for (i, r) in enumerate(runs):
             r.store_result([1.0+i, 2.0+i, 3.0+1], 0, 3, 111, 222)
-        self.assertEqual(ps.averaged_result(), [2.0, 3.0, 4.0])
+        self.assertEqual(ps.average_results(), (2.0, 3.0, 4.0))
 
     def test_all(self):
         ps = ParameterSet.find_or_create(0, 1, 2, 3)
