@@ -49,12 +49,10 @@ def start_stub(stub_simulator, num_proc = 1, logger = None, dump_path = 'tasks.b
         _queue.push_all(tasks)
     Server._print_tasks = print_tasks_stub
     def receive_result_stub(self):
-        print("receive result is called")
         t = _queue.pop()
         if t is None:
             return None
         t.rc = 0
-        print(t.dumps())
         return t
     Server._receive_result = receive_result_stub
 
