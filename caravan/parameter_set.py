@@ -22,6 +22,8 @@ class ParameterSet:
     def find_or_create(cls, *params):
         t = tables.Tables.get()
         prm = tuple(params)
+        if len(params) == 1 and isinstance(params[0], tuple):
+            prm = params[0]
         if prm in t.param_ps_dict:
             return t.param_ps_dict[prm]
         else:
