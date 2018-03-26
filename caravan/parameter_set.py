@@ -2,6 +2,7 @@ from collections import OrderedDict
 from . import run
 from . import tables
 
+
 class ParameterSet:
     command_func = None
 
@@ -77,10 +78,9 @@ class ParameterSet:
         return tables.Tables.get().ps_table
 
     @classmethod
-    def find(cls,id):
+    def find(cls, id):
         return tables.Tables.get().ps_table[id]
 
     def dumps(self):
-        runs_str = ",\n".join( [ "    " + r.dumps() for r in self.runs()] )
+        runs_str = ",\n".join(["    " + r.dumps() for r in self.runs()])
         return "{\"id\": %d, \"params\": %s, \"runs\": [\n%s\n]}" % (self.id, str(self.params), runs_str)
-

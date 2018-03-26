@@ -4,14 +4,13 @@ from caravan.parameter_set import ParameterSet
 
 
 class ParameterSetTest(unittest.TestCase):
-
     def setUp(self):
         self.t = Tables.get()
         self.t.clear()
 
     def test_ps(self):
         ps = ParameterSet(500, (2, 3, 4, 5))
-        self.assertEqual(ps.id,500)
+        self.assertEqual(ps.id, 500)
         self.assertEqual(ps.params, (2, 3, 4, 5))
         self.assertEqual(ps.run_ids, [])
 
@@ -45,7 +44,7 @@ class ParameterSetTest(unittest.TestCase):
         runs = ps.create_runs_upto(1)
         self.assertFalse(ps.is_finished())
         self.assertEqual(len(ps.finished_runs()), 0)
-        runs[0].store_result( [1.0, 2.0, 3.0], 0, 3, 111, 222)
+        runs[0].store_result([1.0, 2.0, 3.0], 0, 3, 111, 222)
         self.assertTrue(ps.is_finished())
         self.assertEqual(len(ps.finished_runs()), 1)
 
@@ -54,7 +53,7 @@ class ParameterSetTest(unittest.TestCase):
         runs = ps.create_runs_upto(3)
         self.assertEqual(ps.average_results(), ())
         for (i, r) in enumerate(runs):
-            r.store_result([1.0+i, 2.0+i, 3.0+1], 0, 3, 111, 222)
+            r.store_result([1.0 + i, 2.0 + i, 3.0 + 1], 0, 3, 111, 222)
         self.assertEqual(ps.average_results(), (2.0, 3.0, 4.0))
 
     def test_all(self):
@@ -70,6 +69,7 @@ class ParameterSetTest(unittest.TestCase):
         pid = ps2.id
         self.assertEqual(pid, 1)
         self.assertEqual(ParameterSet.find(1), ps2)
+
 
 if __name__ == '__main__':
     unittest.main()

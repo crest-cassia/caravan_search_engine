@@ -1,11 +1,13 @@
-import sys,threading
+import sys, threading
 from queue import Queue
 
 _current_fiber = None
 
+
 def set_current_fiber(f):
     global _current_fiber
     _current_fiber = f
+
 
 def current():
     global _current_fiber
@@ -13,8 +15,8 @@ def current():
         _current_fiber = _create_main_fiber()
     return _current_fiber
 
-class Fiber:
 
+class Fiber:
     def __init__(self, target=None, args=[], kwargs={}):
         def _run():
             try:
@@ -36,7 +38,7 @@ class Fiber:
         self._q = Queue()
         self._th = threading.Thread(target=_run, daemon=True)
 
-        self.parent = current()   # only the root fiber's parent is None
+        self.parent = current()  # only the root fiber's parent is None
         self._th.start()
 
     def _get_active_parent(self):
@@ -64,7 +66,7 @@ class Fiber:
     def switch(self):
         if not self._th.is_alive():
             raise error('Fiber has ended')
-        
+
         curr = current()
         self._q.put(0)
         set_current_fiber(self)
@@ -77,6 +79,7 @@ class Fiber:
 
     def __getstate__(self):
         raise TypeError('cannot serialize Fiber object')
+
 
 def _create_main_fiber():
     main_fiber = Fiber.__new__(Fiber)

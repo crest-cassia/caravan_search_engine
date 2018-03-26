@@ -2,8 +2,8 @@ from collections import OrderedDict
 import json
 from . import tables
 
-class Task:
 
+class Task:
     def __init__(self, task_id, command):
         self.id = task_id
         if command is not None:
@@ -53,7 +53,7 @@ class Task:
         return tables.Tables.get().tasks_table
 
     @classmethod
-    def find(cls,id):
+    def find(cls, id):
         return tables.Tables.get().tasks_table[id]
 
     def dumps(self):
@@ -66,7 +66,7 @@ class Task:
             for t in cls.all():
                 print(t.dumps())
                 num_results = len(t.results)
-                fmt = ">6q%dd" % num_results
+                fmt = f">6q{num_results:d}d"
                 bytes = struct.pack(fmt, t.id, t.rc, t.place_id, t.start_at, t.finish_at, len(t.results), *t.results)
                 f.write(bytes)
             f.flush()

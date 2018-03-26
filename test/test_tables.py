@@ -5,7 +5,6 @@ from caravan.parameter_set import ParameterSet
 
 
 class TestTables(unittest.TestCase):
-
     def setUp(self):
         self.t = Tables.get()
         self.t.clear()
@@ -23,28 +22,27 @@ class TestTables(unittest.TestCase):
     def test_dump_empty(self):
         path = self.dump_path
         Tables.dump(path)
-        self.assertTrue( os.path.exists(path) )
+        self.assertTrue(os.path.exists(path))
         Tables.load(path)
-        self.assertEqual( len(self.t.ps_table), 0 )
+        self.assertEqual(len(self.t.ps_table), 0)
 
     def test_dump(self):
         ps = ParameterSet.find_or_create((0, 1, 2, 3))
         runs = ps.create_runs_upto(3)
         runs[0].store_result([1.0, 2.0, 3.0], 0, 3, 111, 222)
         ps = ParameterSet.find_or_create((4, 5, 6, 7))
-        self.assertEqual( len(self.t.ps_table), 2 )
+        self.assertEqual(len(self.t.ps_table), 2)
         runs = ps.create_runs_upto(3)
         runs[2].store_result([1.0, 2.0, 3.0], 0, 3, 111, 222)
-        self.assertEqual( len(self.t.tasks_table), 6 )
+        self.assertEqual(len(self.t.tasks_table), 6)
 
         path = self.dump_path
         Tables.dump(path)
-        self.assertTrue( os.path.exists(path) )
+        self.assertTrue(os.path.exists(path))
         self.t.clear()
         Tables.load(path)
         self.t = Tables.get()
-        self.assertEqual( len(self.t.ps_table), 2 )
-        self.assertEqual( len(self.t.tasks_table), 6 )
-        self.assertTrue( self.t.tasks_table[0].is_finished() )
-        self.assertTrue( self.t.tasks_table[5].is_finished() )
-
+        self.assertEqual(len(self.t.ps_table), 2)
+        self.assertEqual(len(self.t.tasks_table), 6)
+        self.assertTrue(self.t.tasks_table[0].is_finished())
+        self.assertTrue(self.t.tasks_table[5].is_finished())

@@ -1,5 +1,6 @@
-import sys,logging,os
+import sys, logging, os
 from collections import defaultdict
+
 try:
     from fibers import Fiber
 except ImportError:
@@ -8,8 +9,8 @@ from .task import Task
 from .run import Run
 from .parameter_set import ParameterSet
 
-class Server(object):
 
+class Server(object):
     _instance = None
 
     @classmethod
@@ -18,7 +19,7 @@ class Server(object):
             raise Exception("use Server.start() method")
         return cls._instance
 
-    def __init__(self, logger = None):
+    def __init__(self, logger=None):
         self.observed_ps = defaultdict(list)
         self.observed_all_ps = defaultdict(list)
         self.observed_task = defaultdict(list)
@@ -29,7 +30,7 @@ class Server(object):
         self._out = None
 
     @classmethod
-    def start(cls, logger = None, redirect_stdout = False):
+    def start(cls, logger=None, redirect_stdout=False):
         cls._instance = cls(logger)
         cls._instance._out = os.fdopen(sys.stdout.fileno(), mode='w', buffering=1)
         sys.stdin = os.fdopen(sys.stdin.fileno(), mode='r', buffering=1)
@@ -42,7 +43,7 @@ class Server(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
-            return False   # re-raise exception
+            return False  # re-raise exception
         if self._loop_fiber.is_alive():
             self._loop_fiber.switch()
 
@@ -70,9 +71,11 @@ class Server(object):
     @classmethod
     def async(cls, func, *args, **kwargs):
         self = cls.get()
+
         def _f():
             func(*args, **kwargs)
             self._loop_fiber.switch()
+
         fb = Fiber(target=_f)
         self._fibers.append(fb)
 
@@ -80,8 +83,10 @@ class Server(object):
     def await_ps(cls, ps):
         self = cls.get()
         fb = Fiber.current()
+
         def _callback(ps):
             self._fibers.append(fb)
+
         cls.watch_ps(ps, _callback)
         self._loop_fiber.switch()
 
@@ -89,8 +94,10 @@ class Server(object):
     def await_all_ps(cls, ps_set):
         self = cls.get()
         fb = Fiber.current()
+
         def _callback(pss):
             self._fibers.append(fb)
+
         cls.watch_all_ps(ps_set, _callback)
         self._loop_fiber.switch()
 
@@ -98,8 +105,10 @@ class Server(object):
     def await_task(cls, task):
         self = cls.get()
         fb = Fiber.current()
+
         def _callback(ps):
             self._fibers.append(fb)
+
         cls.watch_task(task, _callback)
         self._loop_fiber.switch()
 
@@ -107,8 +116,10 @@ class Server(object):
     def await_all_tasks(cls, tasks):
         self = cls.get()
         fb = Fiber.current()
+
         def _callback(ts):
             self._fibers.append(fb)
+
         cls.watch_all_tasks(tasks, _callback)
         self._loop_fiber.switch()
 
@@ -132,7 +143,8 @@ class Server(object):
         log_level = logging.INFO
         if 'CARAVAN_SEARCH_ENGINE_LOGLEVEL' in os.environ:
             s = os.environ['CARAVAN_SEARCH_ENGINE_LOGLEVEL']
-            levels = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO, 'WARNING': logging.WARNING, 'ERROR': logging.ERROR, 'CRITICAL': logging.CRITICAL}
+            levels = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO, 'WARNING': logging.WARNING, 'ERROR': logging.ERROR,
+                      'CRITICAL': logging.CRITICAL}
             log_level = levels[s]
         logger.setLevel(log_level)
         logger.propagate = False
@@ -145,7 +157,7 @@ class Server(object):
         return logger
 
     def _has_callbacks(self):
-        return ( len( self.observed_ps ) + len( self.observed_all_ps ) ) > 0
+        return (len(self.observed_ps) + len(self.observed_all_ps)) > 0
 
     def _has_unfinished_tasks(self):
         for r in Task.all()[:self.max_submitted_task_id]:
@@ -159,7 +171,7 @@ class Server(object):
         self._print_tasks(tasks_to_be_submitted)
         self.max_submitted_task_id = len(Task.all())
 
-    def _print_tasks(self,tasks):
+    def _print_tasks(self, tasks):
         for t in tasks:
             line = "%d %s\n" % (t.id, t.command)
             self._out.write(line)
@@ -180,13 +192,13 @@ class Server(object):
         for psid in list(self.observed_ps.keys()):
             callbacks = self.observed_ps[psid]
             ps = ParameterSet.find(psid)
-            while ps.is_finished() and len(callbacks)>0:
+            while ps.is_finished() and len(callbacks) > 0:
                 self._logger.debug("executing callback for ParameterSet %d" % ps.id)
                 f = callbacks.pop(0)
                 f(ps)
                 self._launch_all_fibers()
                 executed = True
-        empty_keys = [k for k,v in self.observed_ps.items() if len(v)==0 ]
+        empty_keys = [k for k, v in self.observed_ps.items() if len(v) == 0]
         for k in empty_keys:
             self.observed_ps.pop(k)
         return executed
@@ -196,13 +208,13 @@ class Server(object):
         for psids in list(self.observed_all_ps.keys()):
             pss = [ParameterSet.find(psid) for psid in psids]
             callbacks = self.observed_all_ps[psids]
-            while len(callbacks)>0 and all([ps.is_finished() for ps in pss]):
+            while len(callbacks) > 0 and all([ps.is_finished() for ps in pss]):
                 self._logger.debug("executing callback for ParameterSet %s" % repr(psids))
                 f = callbacks.pop(0)
                 f(pss)
                 self._launch_all_fibers()
                 executed = True
-        empty_keys = [k for k,v in self.observed_all_ps.items() if len(v) == 0]
+        empty_keys = [k for k, v in self.observed_all_ps.items() if len(v) == 0]
         for k in empty_keys: self.observed_all_ps.pop(k)
         return executed
 
@@ -222,7 +234,7 @@ class Server(object):
         executed = False
         callback_pairs = self.observed_all_tasks[task.id]
         to_be_removed = []
-        for (idx,pair) in enumerate(callback_pairs):
+        for (idx, pair) in enumerate(callback_pairs):
             task_ids = pair[0]
             if all([Task.find(t).is_finished() for t in task_ids]):
                 self._logger.debug("executing callback for Tasks %s" % str(task_ids))
@@ -244,14 +256,13 @@ class Server(object):
         self._logger.debug("received: %s" % line)
         if not line: return None
         l = line.split(' ')
-        tid,rc,place_id,start_at,finish_at = [ int(x) for x in l[:5] ]
-        results = [ float(x) for x in l[5:] ]
+        tid, rc, place_id, start_at, finish_at = [int(x) for x in l[:5]]
+        results = [float(x) for x in l[5:]]
         t = Task.find(tid)
         t.store_result(results, rc, place_id, start_at, finish_at)
         self._logger.debug("stored result of Task %d" % tid)
         return t
 
     def _debug(self):
-        sys.stderr.write(str(self.observed_ps)+"\n")
-        sys.stderr.write(str(self.observed_all_ps)+"\n")
-
+        sys.stderr.write(str(self.observed_ps) + "\n")
+        sys.stderr.write(str(self.observed_all_ps) + "\n")

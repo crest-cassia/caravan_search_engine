@@ -5,7 +5,6 @@ from .task import Task
 
 
 class Run(Task):
-
     def __init__(self, run_id, ps_id, seed):
         super().__init__(run_id, None)
         self.ps_id = ps_id
@@ -44,12 +43,11 @@ class Run(Task):
 
     @classmethod
     def all(cls):
-        return [t for t in tables.Tables.get().tasks_table if isinstance(t,cls)]
+        return [t for t in tables.Tables.get().tasks_table if isinstance(t, cls)]
 
     @classmethod
-    def find(cls,id):
+    def find(cls, id):
         return tables.Tables.get().tasks_table[id]
 
     def dumps(self):
         return json.dumps(self.to_dict())
-

@@ -1,7 +1,7 @@
 import pickle
 
-class Tables:
 
+class Tables:
     _instance = None
 
     @classmethod
@@ -37,8 +37,10 @@ class Tables:
         task_str = ",\n".join([task.dumps() for task in self.tasks_table])
         return "PS: [\n%s\n],\nTasks: [\n%s\n]\n" % (ps_str, task_str)
 
+
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) == 2:
         t = Tables.load(sys.argv[1])
         print(t.dumps())
@@ -47,4 +49,3 @@ if __name__ == "__main__":
         sys.stderr.write("  Usage: python %s <pickle file>\n")
         sys.stderr.write("    it will print the data to stdout\n")
         raise RuntimeError("Invalid number of arguments")
-
