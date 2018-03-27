@@ -66,7 +66,7 @@ class Task:
             for t in cls.all():
                 print(t.dumps())
                 num_results = len(t.results)
-                fmt = f">6q{num_results:d}d"
+                fmt = ">6q{n:d}d".format(n=num_results)
                 bytes = struct.pack(fmt, t.id, t.rc, t.place_id, t.start_at, t.finish_at, len(t.results), *t.results)
                 f.write(bytes)
             f.flush()
