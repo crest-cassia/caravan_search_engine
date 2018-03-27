@@ -70,4 +70,3 @@ class Task:
                 bytes = struct.pack(fmt, t.id, t.rc, t.place_id, t.start_at, t.finish_at, len(t.results), *t.results)
                 f.write(bytes)
             f.flush()
-
