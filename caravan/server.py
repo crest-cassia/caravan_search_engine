@@ -1,10 +1,13 @@
 import sys, logging, os
 from collections import defaultdict
 
-try:
-    from fibers import Fiber
-except ImportError:
+if os.getenv("CARAVAN_USE_PSEUDO_FIBER") == "1":  # for debugging pseudo_fiber
     from .pseudo_fiber import Fiber
+else:
+    try:
+        from fibers import Fiber
+    except ImportError:
+        from .pseudo_fiber import Fiber
 from .task import Task
 from .run import Run
 from .parameter_set import ParameterSet
