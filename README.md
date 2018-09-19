@@ -6,7 +6,7 @@ The search engine part of [CARAVAN](https://github.com/crest-cassia/caravan) fra
 
 ## Prerequisite
 
-Python 3.2 or later
+Python 3.5 or later
 
 ## Running tests
 
