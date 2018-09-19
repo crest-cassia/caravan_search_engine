@@ -1,11 +1,14 @@
 from .server import Server
 from .task import Task
+import bisect
 
 
 class EventQueue:
     def __init__(self, num_places):
         self.n = num_places
-        self.running = [None for i in range(self.n)]
+        self.sleeping_places = list(range(self.n))
+        self.running_tasks = []
+        self.finish_at_list = []
         self.t = 0
         self.tasks = []
 
@@ -13,22 +16,25 @@ class EventQueue:
         self.tasks.extend(tasks)
 
     def pop(self):
-        while None in self.running and len(self.tasks) > 0:
-            idx = self.running.index(None)
+        while len(self.sleeping_places) > 0 and len(self.tasks) > 0:
+            place = self.sleeping_places.pop(0)
             starting = self.tasks.pop(0)
             starting.start_at = self.t
             starting.finish_at = self.t + starting.dt
-            starting.place_id = idx
-            self.running[idx] = starting
+            starting.place_id = place
+            f = starting.finish_at
+            idx = bisect.bisect_right(self.finish_at_list, f)
+            self.finish_at_list.insert(idx, f)
+            self.running_tasks.insert(idx, starting)
 
-        compacted = [r for r in self.running if r is not None]
-        if len(compacted) == 0:
+        if len(self.sleeping_places) == self.n:
             return None
         else:
-            next_task = min(compacted, key=(lambda r: r.finish_at))
+            self.finish_at_list.pop(0)
+            next_task = self.running_tasks.pop(0)
             self.t = next_task.finish_at
-            idx = self.running.index(next_task)
-            self.running[idx] = None
+            p = next_task.place_id
+            self.sleeping_places.append(p)
             return next_task
 
 
