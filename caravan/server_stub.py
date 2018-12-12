@@ -41,15 +41,17 @@ class EventQueue:
 _queue = None
 _stub_simulator = None
 
+def _default_sim(task):
+    return (), 1
 
-def start_stub(stub_simulator, num_proc=1, logger=None, dump_path='tasks.bin'):
+
+def start_stub(coroutine, sim=_default_sim, num_proc=1, logger=None, dump_path='tasks.bin'):
     global _queue, _stub_simulator
-    _stub_simulator = stub_simulator
-    Server._instance = Server(logger)
+    _stub_simulator = sim
     _queue = EventQueue(num_proc)
 
     # override the methods
-    def print_tasks_stub(self, tasks):
+    def print_tasks_stub(tasks):
         for t in tasks:
             res, dt = _stub_simulator(t)
             t.results = res
@@ -58,7 +60,7 @@ def start_stub(stub_simulator, num_proc=1, logger=None, dump_path='tasks.bin'):
 
     Server._print_tasks = print_tasks_stub
 
-    def receive_result_stub(self):
+    def receive_result_stub():
         t = _queue.pop()
         if t is None:
             return None
@@ -67,11 +69,5 @@ def start_stub(stub_simulator, num_proc=1, logger=None, dump_path='tasks.bin'):
 
     Server._receive_result = receive_result_stub
 
-    Server.org_exit = Server.__exit__
-
-    def _exit(self, exc_type, exc_val, exc_tb):
-        self.org_exit(exc_type, exc_val, exc_tb)
-        Task.dump_binary(dump_path)
-
-    Server.__exit__ = _exit
-    return Server._instance
+    Server.start( coroutine, logger=logger)
+    Task.dump_binary(dump_path)

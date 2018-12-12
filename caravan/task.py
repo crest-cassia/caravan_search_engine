@@ -44,9 +44,9 @@ class Task:
             o["results"] = self.results
         return o
 
-    def add_callback(self, f):
+    def completion(self):
         from .server import Server
-        Server.watch_task(self, f)
+        return Server.task_completion(self)
 
     @classmethod
     def all(cls):

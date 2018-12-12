@@ -73,6 +73,10 @@ class ParameterSet:
         o["run_ids"] = self.run_ids
         return o
 
+    def completion(self):
+        from .server import Server
+        return Server.ps_completion(self)
+
     @classmethod
     def all(cls):
         return tables.Tables.get().ps_table

@@ -1,147 +1,73 @@
-import sys, logging, os
+import sys, logging, os, asyncio
 from collections import defaultdict
 
-if os.getenv("CARAVAN_USE_PSEUDO_FIBER") == "1":  # for debugging pseudo_fiber
-    from .pseudo_fiber import Fiber
-else:
-    try:
-        from fibers import Fiber
-    except ImportError:
-        from .pseudo_fiber import Fiber
 from .task import Task
 from .run import Run
 from .parameter_set import ParameterSet
 
 
 class Server(object):
-    _instance = None
+    _observed_task = None
+    _logger = None
+    _out = None
+    _max_submitted_task_id = 0
+    _num_submitted = 0
 
     @classmethod
-    def get(cls):
-        if cls._instance is None:
-            raise Exception("use Server.start() method")
-        return cls._instance
-
-    def __init__(self, logger=None):
-        self.observed_ps = defaultdict(list)
-        self.observed_all_ps = defaultdict(list)
-        self.observed_task = defaultdict(list)
-        self.observed_all_tasks = defaultdict(list)  # (task_id) => list of (task_ids, callback)
-        self.max_submitted_task_id = 0
-        self._logger = logger or self._default_logger()
-        self._fibers = []
-        self._out = None
-
-    @classmethod
-    def start(cls, logger=None, redirect_stdout=False):
-        cls._instance = cls(logger)
-        cls._instance._out = os.fdopen(sys.stdout.fileno(), mode='w', buffering=1)
+    def start(cls, coroutine, logger=None, redirect_stdout=False):
+        cls._logger = logger or cls._default_logger()
+        cls._observed_task = defaultdict(list)
+        cls._out = os.fdopen(sys.stdout.fileno(), mode='w', buffering=1)
         sys.stdin = os.fdopen(sys.stdin.fileno(), mode='r', buffering=1)
         if redirect_stdout:
             sys.stdout = sys.stderr
-        return cls._instance
-
-    def __enter__(self):
-        self._loop_fiber = Fiber(target=self._loop)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is not None:
-            return False  # re-raise exception
-        if self._loop_fiber.is_alive():
-            self._loop_fiber.switch()
+        async def _main():
+            t = asyncio.create_task(coroutine)
+            await asyncio.gather(
+                    t,
+                    cls._loop(t)
+                    )
+        asyncio.run(_main())
 
     @classmethod
-    def watch_ps(cls, ps, callback):
-        cls.get().observed_ps[ps.id].append(callback)
+    async def task_completion(cls, task):
+        if not task.is_finished():
+            event = asyncio.Event()
+            cls._observed_task[task.id].append(event)
+            await event.wait()
+        return task
 
     @classmethod
-    def watch_all_ps(cls, ps_set, callback):
-        ids = [ps.id for ps in ps_set]
-        key = tuple(ids)
-        cls.get().observed_all_ps[key].append(callback)
+    async def ps_completion(cls, ps):
+        coroutines = [cls.task_completion(r) for r in ps.runs() if not r.is_finished()]
+        await asyncio.gather( *coroutines )
+        return ps
 
     @classmethod
-    def watch_task(cls, task, callback):
-        cls.get().observed_task[task.id].append(callback)
+    async def _loop(cls, user_task):
+        cls._logger.debug("start polling")
+        while not user_task.done() or not cls._scheduler_ending():
+            await asyncio.sleep(0)
+            if cls._scheduler_ending(): # to prevent scheduler from ending
+                cls._logger.debug("scheduler is ending, but user_task is not complete")
+                cls._logger.debug(cls._observed_task)
+                await asyncio.sleep(0.1)
+                continue
+            cls._submit_all()
+            t = cls._receive_result()
+            cls._num_submitted -= 1
+            if t is None:
+                break
+            if t.id in cls._observed_task:
+                events = cls._observed_task[t.id]
+                for e in events:
+                    e.set()
+                del cls._observed_task[t.id]
+        cls._finalize_scheduler()
+        cls._logger.debug("event loop done")
 
     @classmethod
-    def watch_all_tasks(cls, tasks, callback):
-        key = tuple([t.id for t in tasks])
-        for t in tasks:
-            pair = (key, callback)
-            cls.get().observed_all_tasks[t.id].append(pair)
-
-    @classmethod
-    def async(cls, func, *args, **kwargs):
-        self = cls.get()
-
-        def _f():
-            func(*args, **kwargs)
-            self._loop_fiber.switch()
-
-        fb = Fiber(target=_f)
-        self._fibers.append(fb)
-
-    @classmethod
-    def await_ps(cls, ps):
-        self = cls.get()
-        fb = Fiber.current()
-
-        def _callback(ps):
-            self._fibers.append(fb)
-
-        cls.watch_ps(ps, _callback)
-        self._loop_fiber.switch()
-
-    @classmethod
-    def await_all_ps(cls, ps_set):
-        self = cls.get()
-        fb = Fiber.current()
-
-        def _callback(pss):
-            self._fibers.append(fb)
-
-        cls.watch_all_ps(ps_set, _callback)
-        self._loop_fiber.switch()
-
-    @classmethod
-    def await_task(cls, task):
-        self = cls.get()
-        fb = Fiber.current()
-
-        def _callback(ps):
-            self._fibers.append(fb)
-
-        cls.watch_task(task, _callback)
-        self._loop_fiber.switch()
-
-    @classmethod
-    def await_all_tasks(cls, tasks):
-        self = cls.get()
-        fb = Fiber.current()
-
-        def _callback(ts):
-            self._fibers.append(fb)
-
-        cls.watch_all_tasks(tasks, _callback)
-        self._loop_fiber.switch()
-
-    def _loop(self):
-        self._launch_all_fibers()
-        self._submit_all()
-        self._logger.debug("start polling")
-        t = self._receive_result()
-        while t:
-            self._exec_callback_for_task(t)
-            self._exec_callback_for_all_task(t)
-            if isinstance(t, Run):
-                ps = t.parameter_set()
-                if ps.is_finished():
-                    self._exec_callback()
-            self._submit_all()
-            t = self._receive_result()
-
-    def _default_logger(self):
+    def _default_logger(cls):
         logger = logging.getLogger(__name__)
         log_level = logging.INFO
         if 'CARAVAN_SEARCH_ENGINE_LOGLEVEL' in os.environ:
@@ -159,113 +85,46 @@ class Server(object):
             logger.addHandler(ch)
         return logger
 
-    def _has_callbacks(self):
-        return (len(self.observed_ps) + len(self.observed_all_ps)) > 0
+    @classmethod
+    def _scheduler_ending(cls):
+        has_pending_tasks = (len(Task.all()) != cls._max_submitted_task_id)
+        return not has_pending_tasks and cls._num_submitted == 0
 
-    def _has_unfinished_tasks(self):
-        for r in Task.all()[:self.max_submitted_task_id]:
-            if not r.is_finished():
-                return True
-        return False
+    @classmethod
+    def _submit_all(cls):
+        tasks_to_be_submitted = [t for t in Task.all()[cls._max_submitted_task_id:] if not t.is_finished()]
+        n = len(tasks_to_be_submitted)
+        cls._logger.debug("submitting %d Tasks" % n)
+        cls._num_submitted += n
+        cls._print_tasks(tasks_to_be_submitted)
+        cls._max_submitted_task_id = len(Task.all())
 
-    def _submit_all(self):
-        tasks_to_be_submitted = [t for t in Task.all()[self.max_submitted_task_id:] if not t.is_finished()]
-        self._logger.debug("submitting %d Tasks" % len(tasks_to_be_submitted))
-        self._print_tasks(tasks_to_be_submitted)
-        self.max_submitted_task_id = len(Task.all())
-
-    def _print_tasks(self, tasks):
+    @classmethod
+    def _print_tasks(cls, tasks):
         for t in tasks:
             line = "%d %s\n" % (t.id, t.command)
-            self._out.write(line)
-        self._out.write("\n")
+            cls._out.write(line)
+        cls._out.write("\n")
 
-    def _launch_all_fibers(self):
-        while self._fibers:
-            f = self._fibers.pop(0)
-            self._logger.debug("starting fiber")
-            f.switch()
+    @classmethod
+    def _finalize_scheduler(cls):
+        cls._print_tasks([])
 
-    def _exec_callback(self):
-        while self._check_completed_ps() or self._check_completed_ps_all():
-            pass
-
-    def _check_completed_ps(self):
-        executed = False
-        for psid in list(self.observed_ps.keys()):
-            callbacks = self.observed_ps[psid]
-            ps = ParameterSet.find(psid)
-            while ps.is_finished() and len(callbacks) > 0:
-                self._logger.debug("executing callback for ParameterSet %d" % ps.id)
-                f = callbacks.pop(0)
-                f(ps)
-                self._launch_all_fibers()
-                executed = True
-        empty_keys = [k for k, v in self.observed_ps.items() if len(v) == 0]
-        for k in empty_keys:
-            self.observed_ps.pop(k)
-        return executed
-
-    def _check_completed_ps_all(self):
-        executed = False
-        for psids in list(self.observed_all_ps.keys()):
-            pss = [ParameterSet.find(psid) for psid in psids]
-            callbacks = self.observed_all_ps[psids]
-            while len(callbacks) > 0 and all([ps.is_finished() for ps in pss]):
-                self._logger.debug("executing callback for ParameterSet %s" % repr(psids))
-                f = callbacks.pop(0)
-                f(pss)
-                self._launch_all_fibers()
-                executed = True
-        empty_keys = [k for k, v in self.observed_all_ps.items() if len(v) == 0]
-        for k in empty_keys: self.observed_all_ps.pop(k)
-        return executed
-
-    def _exec_callback_for_task(self, task):
-        executed = False
-        callbacks = self.observed_task[task.id]
-        while len(callbacks) > 0:
-            self._logger.debug("executing callback for Task %d" % task.id)
-            f = callbacks.pop(0)
-            f(task)
-            self._launch_all_fibers()
-            executed = True
-        self.observed_task.pop(task.id)
-        return executed
-
-    def _exec_callback_for_all_task(self, task):
-        executed = False
-        callback_pairs = self.observed_all_tasks[task.id]
-        to_be_removed = []
-        for (idx, pair) in enumerate(callback_pairs):
-            task_ids = pair[0]
-            if all([Task.find(t).is_finished() for t in task_ids]):
-                self._logger.debug("executing callback for Tasks %s" % str(task_ids))
-                f = pair[1]
-                f(Task.find(t) for t in task_ids)
-                to_be_removed.append(idx)
-                self._launch_all_fibers()
-                executed = True
-        for idx in to_be_removed:
-            callback_pairs.pop(idx)
-        if len(callback_pairs) == 0:
-            self.observed_all_tasks.pop(task.id)
-        return executed
-
-    def _receive_result(self):
+    @classmethod
+    def _receive_result(cls):
         line = sys.stdin.readline()
         if not line: return None
         line = line.rstrip()
-        self._logger.debug("received: %s" % line)
+        cls._logger.debug("received: %s" % line)
         if not line: return None
         l = line.split(' ')
         tid, rc, place_id, start_at, finish_at = [int(x) for x in l[:5]]
         results = [float(x) for x in l[5:]]
         t = Task.find(tid)
         t.store_result(results, rc, place_id, start_at, finish_at)
-        self._logger.debug("stored result of Task %d" % tid)
+        cls._logger.debug("stored result of Task %d" % tid)
         return t
 
-    def _debug(self):
-        sys.stderr.write(str(self.observed_ps) + "\n")
-        sys.stderr.write(str(self.observed_all_ps) + "\n")
+    @classmethod
+    def _debug(cls):
+        print(str(cls._observed_task), file=sys.stderr, flush=True)
