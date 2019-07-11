@@ -33,7 +33,7 @@ class Run(Task):
         o["id"] = self.id
         o["ps_id"] = self.ps_id
         o["seed"] = self.seed
-        if self.rc:
+        if self.rc is not None:
             o["rc"] = self.rc
             o["place_id"] = self.place_id
             o["start_at"] = self.start_at
