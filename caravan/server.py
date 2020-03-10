@@ -31,12 +31,14 @@ class Server(object):
         self._logger = logger or self._default_logger()
         self._fibers = []
         self._out = None
+        self._in = None
 
     @classmethod
     def start(cls, logger=None, redirect_stdout=False):
         cls._instance = cls(logger)
         cls._instance._out = os.fdopen(sys.stdout.fileno(), mode='w', buffering=1)
-        sys.stdin = os.fdopen(sys.stdin.fileno(), mode='rb', buffering=0)
+        cls._instance._in = os.fdopen(sys.stdin.fileno(), mode='rb', buffering=0)
+        sys.stdin = None
         if redirect_stdout:
             sys.stdout = sys.stderr
         return cls._instance
@@ -253,10 +255,10 @@ class Server(object):
         return executed
 
     def _receive_result(self):
-        size_b = sys.stdin.read(8)
+        size_b = self._in.read(8)
         size = struct.unpack('>q', size_b)[0]
         if size == 0: return None
-        data_b = sys.stdin.read(size)
+        data_b = self._in.read(size)
         self._logger.debug("received: %s bytes" % size)
         unpacked = msgpack.unpackb(data_b)
         self._logger.debug("received: %s" % str(unpacked))
