@@ -36,7 +36,7 @@ class Server(object):
     @classmethod
     def start(cls, logger=None, redirect_stdout=False):
         cls._instance = cls(logger)
-        cls._instance._out = os.fdopen(sys.stdout.fileno(), mode='w', buffering=1)
+        cls._instance._out = os.fdopen(sys.stdout.fileno(), mode='wb', buffering=0)
         cls._instance._in = os.fdopen(sys.stdin.fileno(), mode='rb', buffering=0)
         sys.stdin = None
         if redirect_stdout:
@@ -177,10 +177,11 @@ class Server(object):
         self.max_submitted_task_id = len(Task.all())
 
     def _print_tasks(self, tasks):
-        for t in tasks:
-            line = "%d %s\n" % (t.id, t.command)
-            self._out.write(line)
-        self._out.write("\n")
+        b_tasks = [ {"id": t.id, "cmd": t.command} for t in tasks ]
+        packed = msgpack.packb(b_tasks)
+        size_b = struct.pack('>q', len(packed))
+        self._out.write(size_b)
+        self._out.write(packed)
 
     def _launch_all_fibers(self):
         while self._fibers:
