@@ -1,4 +1,4 @@
-import sys, logging, os
+import sys, logging, os, msgpack, struct
 from collections import defaultdict
 
 if os.getenv("CARAVAN_USE_PSEUDO_FIBER") == "1":  # for debugging pseudo_fiber
@@ -36,7 +36,7 @@ class Server(object):
     def start(cls, logger=None, redirect_stdout=False):
         cls._instance = cls(logger)
         cls._instance._out = os.fdopen(sys.stdout.fileno(), mode='w', buffering=1)
-        sys.stdin = os.fdopen(sys.stdin.fileno(), mode='r', buffering=1)
+        sys.stdin = os.fdopen(sys.stdin.fileno(), mode='rb', buffering=0)
         if redirect_stdout:
             sys.stdout = sys.stderr
         return cls._instance
@@ -253,14 +253,19 @@ class Server(object):
         return executed
 
     def _receive_result(self):
-        line = sys.stdin.readline()
-        if not line: return None
-        line = line.rstrip()
-        self._logger.debug("received: %s" % line)
-        if not line: return None
-        l = line.split(' ')
-        tid, rc, place_id, start_at, finish_at = [int(x) for x in l[:5]]
-        results = [float(x) for x in l[5:]]
+        size_b = sys.stdin.read(8)
+        size = struct.unpack('>q', size_b)[0]
+        if size == 0: return None
+        data_b = sys.stdin.read(size)
+        self._logger.debug("received: %s bytes" % size)
+        unpacked = msgpack.unpackb(data_b)
+        self._logger.debug("received: %s" % str(unpacked))
+        tid = unpacked["id"]
+        rc = unpacked["rc"]
+        place_id = unpacked["rank"]
+        start_at = unpacked["start_at"]
+        finish_at = unpacked["finish_at"]
+        results = unpacked["output"]
         t = Task.find(tid)
         t.store_result(results, rc, place_id, start_at, finish_at)
         self._logger.debug("stored result of Task %d" % tid)
