@@ -8,6 +8,8 @@ The search engine part of [CARAVAN](https://github.com/crest-cassia/caravan) fra
 
 Python 3.5 or later
 
+- pip install msgpack-python
+
 ## Running tests
 
 ```
