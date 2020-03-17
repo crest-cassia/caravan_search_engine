@@ -12,7 +12,7 @@ class Task:
         self.place_id = None
         self.start_at = None
         self.finish_at = None
-        self.results = None
+        self.output = None
 
     @classmethod
     def create(cls, cmd):
@@ -25,9 +25,9 @@ class Task:
     def is_finished(self):
         return not (self.rc is None)
 
-    def store_result(self, results, rc, place_id, start_at, finish_at):
-        if results:
-            self.results = tuple(results)
+    def store_result(self, output, rc, place_id, start_at, finish_at):
+        if output:
+            self.output = tuple(output)
         self.rc = rc
         self.place_id = place_id
         self.start_at = start_at
@@ -42,7 +42,7 @@ class Task:
             o["place_id"] = self.place_id
             o["start_at"] = self.start_at
             o["finish_at"] = self.finish_at
-            o["results"] = self.results
+            o["output"] = self.output
         return o
 
     def add_callback(self, f):
@@ -66,8 +66,8 @@ class Task:
         with open(path, 'wb') as f:
             for t in cls.all():
                 #print(t.dumps())
-                num_results = len(t.results)
+                num_results = len(t.output)
                 fmt = ">6q{n:d}d".format(n=num_results)
-                bytes = struct.pack(fmt, t.id, t.rc, t.place_id, t.start_at, t.finish_at, len(t.results), *t.results)
+                bytes = struct.pack(fmt, t.id, t.rc, t.place_id, t.start_at, t.finish_at, len(t.output), *t.output)
                 f.write(bytes)
             f.flush()
