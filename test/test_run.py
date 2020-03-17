@@ -18,10 +18,10 @@ class TestRun(unittest.TestCase):
         r.store_result([1.0, 2.0, 3.0], 0, 3, 111, 222)
         self.assertTrue(r.is_finished())
         self.assertEqual(r.rc, 0)
-        self.assertEqual(r.place_id, 3)
+        self.assertEqual(r.rank, 3)
         self.assertEqual(r.start_at, 111)
         self.assertEqual(r.finish_at, 222)
-        self.assertEqual(r.results, (1.0, 2.0, 3.0))
+        self.assertEqual(r.output, [1.0, 2.0, 3.0])
 
     def test_all(self):
         ps = ParameterSet.find_or_create((0, 1, 2, 3))

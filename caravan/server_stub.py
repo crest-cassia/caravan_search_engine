@@ -21,7 +21,7 @@ class EventQueue:
             starting = self.tasks.pop(0)
             starting.start_at = self.t
             starting.finish_at = self.t + starting.dt
-            starting.place_id = place
+            starting.rank = place
             f = starting.finish_at
             idx = bisect.bisect_right(self.finish_at_list, f)
             self.finish_at_list.insert(idx, f)
@@ -33,7 +33,7 @@ class EventQueue:
             self.finish_at_list.pop(0)
             next_task = self.running_tasks.pop(0)
             self.t = next_task.finish_at
-            p = next_task.place_id
+            p = next_task.rank
             self.sleeping_places.append(p)
             return next_task
 
@@ -52,7 +52,7 @@ def start_stub(stub_simulator, num_proc=1, logger=None, dump_path='tasks.bin'):
     def print_tasks_stub(self, tasks):
         for t in tasks:
             res, dt = _stub_simulator(t)
-            t.results = res
+            t.output = res
             t.dt = int(1000 * dt)
         _queue.push_all(tasks)
 

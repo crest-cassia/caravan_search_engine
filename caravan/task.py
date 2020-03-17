@@ -9,7 +9,7 @@ class Task:
         if command is not None:
             self.command = command
         self.rc = None
-        self.place_id = None
+        self.rank = None
         self.start_at = None
         self.finish_at = None
         self.output = None
@@ -25,11 +25,10 @@ class Task:
     def is_finished(self):
         return not (self.rc is None)
 
-    def store_result(self, output, rc, place_id, start_at, finish_at):
-        if output:
-            self.output = tuple(output)
+    def store_result(self, output, rc, rank, start_at, finish_at):
+        self.output = output
         self.rc = rc
-        self.place_id = place_id
+        self.rank = rank
         self.start_at = start_at
         self.finish_at = finish_at
 
@@ -39,7 +38,7 @@ class Task:
         o["command"] = self.command
         if self.rc is not None:
             o["rc"] = self.rc
-            o["place_id"] = self.place_id
+            o["rank"] = self.rank
             o["start_at"] = self.start_at
             o["finish_at"] = self.finish_at
             o["output"] = self.output
@@ -62,12 +61,11 @@ class Task:
 
     @classmethod
     def dump_binary(cls, path):
-        import struct
+        import msgpack
         with open(path, 'wb') as f:
-            for t in cls.all():
-                #print(t.dumps())
-                num_results = len(t.output)
-                fmt = ">6q{n:d}d".format(n=num_results)
-                bytes = struct.pack(fmt, t.id, t.rc, t.place_id, t.start_at, t.finish_at, len(t.output), *t.output)
-                f.write(bytes)
+            def _task_to_obj(t):
+                return {"id": t.id, "rc": t.rc, "rank": t.rank, "start_at": t.start_at, "finish_at": t.finish_at, "output": t.output}
+            task_results = { t.id:_task_to_obj(t) for t in cls.all() if t.rc == 0 }
+            b = mgpack.packb( task_results )
+            f.write(b)
             f.flush()

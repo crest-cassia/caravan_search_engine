@@ -35,10 +35,10 @@ class Run(Task):
         o["seed"] = self.seed
         if self.rc is not None:
             o["rc"] = self.rc
-            o["place_id"] = self.place_id
+            o["rank"] = self.rank
             o["start_at"] = self.start_at
             o["finish_at"] = self.finish_at
-            o["results"] = self.results
+            o["output"] = self.output
         return o
 
     @classmethod

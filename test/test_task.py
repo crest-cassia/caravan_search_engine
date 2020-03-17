@@ -16,7 +16,7 @@ class TestRun(unittest.TestCase):
         t.store_result([1.0, 2.0, 3.0], 0, 3, 111, 222)
         self.assertTrue(t.is_finished())
         self.assertEqual(t.rc, 0)
-        self.assertEqual(t.place_id, 3)
+        self.assertEqual(t.rank, 3)
         self.assertEqual(t.start_at, 111)
         self.assertEqual(t.finish_at, 222)
 

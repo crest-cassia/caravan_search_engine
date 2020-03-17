@@ -265,12 +265,12 @@ class Server(object):
         self._logger.debug("received: %s" % str(unpacked))
         tid = unpacked["id"]
         rc = unpacked["rc"]
-        place_id = unpacked["rank"]
+        rank = unpacked["rank"]
         start_at = unpacked["start_at"]
         finish_at = unpacked["finish_at"]
         output = unpacked["output"]
         t = Task.find(tid)
-        t.store_result(output, rc, place_id, start_at, finish_at)
+        t.store_result(output, rc, rank, start_at, finish_at)
         self._logger.debug("stored result of Task %d" % tid)
         return t
 

@@ -53,18 +53,12 @@ class ParameterSet:
     def is_finished(self):
         return all([r.is_finished() for r in self.runs()])
 
-    def average_results(self):
+    def outputs(self):
         runs = [r for r in self.finished_runs() if r.rc == 0]
         if len(runs) == 0:
-            return ()
+            return []
         else:
-            n = len(runs[0].results)
-            averages = []
-            for i in range(n):
-                results = [r.results[i] for r in runs]
-                avg = sum(results) / len(results)
-                averages.append(avg)
-            return tuple(averages)
+            return [ r.output for r in runs ]
 
     def to_dict(self):
         o = OrderedDict()
