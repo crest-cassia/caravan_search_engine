@@ -177,7 +177,7 @@ class Server(object):
         self.max_submitted_task_id = len(Task.all())
 
     def _print_tasks(self, tasks):
-        b_tasks = [ {"id": t.id, "cmd": t.command} for t in tasks ]
+        b_tasks = [ {"id": t.id, "cmd": t.command, "input": t.input} for t in tasks ]
         packed = msgpack.packb(b_tasks)
         size_b = struct.pack('>q', len(packed))
         self._out.write(size_b)

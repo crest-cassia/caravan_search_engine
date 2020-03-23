@@ -4,10 +4,11 @@ from . import tables
 
 
 class Task:
-    def __init__(self, task_id, command):
+    def __init__(self, task_id, command, input_json = None):
         self.id = task_id
         if command is not None:
             self.command = command
+        self.input = input_json
         self.rc = None
         self.rank = None
         self.start_at = None
@@ -15,10 +16,10 @@ class Task:
         self.output = None
 
     @classmethod
-    def create(cls, cmd):
+    def create(cls, cmd, input_json = None):
         tab = tables.Tables.get()
         next_id = len(tab.tasks_table)
-        t = cls(next_id, cmd)
+        t = cls(next_id, cmd, input_json)
         tab.tasks_table.append(t)
         return t
 
@@ -36,6 +37,7 @@ class Task:
         o = OrderedDict()
         o["id"] = self.id
         o["command"] = self.command
+        o["input"] = self.input
         if self.rc is not None:
             o["rc"] = self.rc
             o["rank"] = self.rank
