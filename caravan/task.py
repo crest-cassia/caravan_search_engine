@@ -68,6 +68,6 @@ class Task:
             def _task_to_obj(t):
                 return {"id": t.id, "rc": t.rc, "rank": t.rank, "start_at": t.start_at, "finish_at": t.finish_at, "output": t.output}
             task_results = { t.id:_task_to_obj(t) for t in cls.all() if t.rc == 0 }
-            b = mgpack.packb( task_results )
+            b = msgpack.packb( task_results )
             f.write(b)
             f.flush()
