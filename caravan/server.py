@@ -35,11 +35,8 @@ class Server(object):
         self._conn = None
 
     @classmethod
-    def start(cls, logger=None, redirect_stdout=False):
+    def start(cls, logger=None):
         cls._instance = cls(logger)
-        sys.stdin = None
-        if redirect_stdout:
-            sys.stdout = sys.stderr
         return cls._instance
 
     def __enter__(self):
@@ -81,7 +78,7 @@ class Server(object):
             cls.get().observed_all_tasks[t.id].append(pair)
 
     @classmethod
-    def async(cls, func, *args, **kwargs):
+    def do_async(cls, func, *args, **kwargs):
         self = cls.get()
 
         def _f():
