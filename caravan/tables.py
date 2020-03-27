@@ -13,11 +13,10 @@ class Tables:
     def __init__(self):
         if self.__class__._instance is not None:
             raise "do not call constructor directly"
-        self.ps_table = []
-        self.param_ps_dict = {}
-        self.tasks_table = []
+        self.clear()
 
     def clear(self):
+        self.sim_table = []
         self.ps_table = []
         self.param_ps_dict = {}
         self.tasks_table = []
