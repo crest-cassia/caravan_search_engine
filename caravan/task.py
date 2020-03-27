@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import json,copy
-from . import tables
+from .tables import Tables
 
 
 class Task:
@@ -17,7 +17,7 @@ class Task:
 
     @classmethod
     def create(cls, cmd, input_obj = None):
-        tab = tables.Tables.get()
+        tab = Tables.get()
         next_id = len(tab.tasks_table)
         t = cls(next_id, cmd, copy.deepcopy(input_obj) )
         tab.tasks_table.append(t)
@@ -70,20 +70,21 @@ class Task:
             o["output"] = self._output
         return o
 
+    def dumps(self):
+        return json.dumps(self.to_dict())
+
     def add_callback(self, f):
         from .server import Server
         Server.watch_task(self, f)
 
     @classmethod
     def all(cls):
-        return tables.Tables.get().tasks_table
+        return Tables.get().tasks_table
 
     @classmethod
     def find(cls, id):
-        return tables.Tables.get().tasks_table[id]
+        return Tables.get().tasks_table[id]
 
-    def dumps(self):
-        return json.dumps(self.to_dict())
 
     @classmethod
     def dump_binary(cls, path):
