@@ -1,49 +1,73 @@
 from collections import OrderedDict
-import json
+import json,copy
 from . import tables
 
 
 class Task:
-    def __init__(self, task_id, command, input_json = None):
-        self.id = task_id
+    def __init__(self, task_id, command, input_obj = None):
+        self._id = task_id
         if command is not None:
-            self.command = command
-        self.input = input_json
-        self.rc = None
-        self.rank = None
-        self.start_at = None
-        self.finish_at = None
-        self.output = None
+            self._command = command
+        self._input = input_obj
+        self._rc = None
+        self._rank = None
+        self._start_at = None
+        self._finish_at = None
+        self._output = None
 
     @classmethod
-    def create(cls, cmd, input_json = None):
+    def create(cls, cmd, input_obj = None):
         tab = tables.Tables.get()
         next_id = len(tab.tasks_table)
-        t = cls(next_id, cmd, input_json)
+        t = cls(next_id, cmd, copy.deepcopy(input_obj) )
         tab.tasks_table.append(t)
         return t
 
+    def id(self):
+        return self._id
+
+    def command(self):
+        return self._command
+
+    def input(self):
+        return copy.deepcopy(self._input)
+
+    def rc(self):
+        return self._rc
+
+    def rank(self):
+        return self._rank
+
+    def start_at(self):
+        return self._start_at
+
+    def finish_at(self):
+        return self._finish_at
+
+    def output(self):
+        return copy.deepcopy(self._output)
+
     def is_finished(self):
-        return not (self.rc is None)
+        return not (self._rc is None)
 
     def store_result(self, output, rc, rank, start_at, finish_at):
-        self.output = output
-        self.rc = rc
-        self.rank = rank
-        self.start_at = start_at
-        self.finish_at = finish_at
+        self._output = copy.deepcopy(output)
+        self._rc = rc
+        self._rank = rank
+        self._start_at = start_at
+        self._finish_at = finish_at
 
     def to_dict(self):
         o = OrderedDict()
-        o["id"] = self.id
-        o["command"] = self.command
-        o["input"] = self.input
-        if self.rc is not None:
-            o["rc"] = self.rc
-            o["rank"] = self.rank
-            o["start_at"] = self.start_at
-            o["finish_at"] = self.finish_at
-            o["output"] = self.output
+        o["id"] = self._id
+        o["command"] = self._command
+        o["input"] = self._input
+        if self._rc is not None:
+            o["rc"] = self._rc
+            o["rank"] = self._rank
+            o["start_at"] = self._start_at
+            o["finish_at"] = self._finish_at
+            o["output"] = self._output
         return o
 
     def add_callback(self, f):
@@ -66,8 +90,8 @@ class Task:
         import msgpack
         with open(path, 'wb') as f:
             def _task_to_obj(t):
-                return {"id": t.id, "rc": t.rc, "rank": t.rank, "start_at": t.start_at, "finish_at": t.finish_at, "output": t.output}
-            task_results = { t.id:_task_to_obj(t) for t in cls.all() if t.rc == 0 }
+                return {"id": t._id, "rc": t._rc, "rank": t._rank, "start_at": t._start_at, "finish_at": t._finish_at, "output": t._output}
+            task_results = { t._id:_task_to_obj(t) for t in cls.all() if t.rc == 0 }
             b = msgpack.packb( task_results )
             f.write(b)
             f.flush()
