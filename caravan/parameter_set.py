@@ -1,51 +1,39 @@
+import copy
 from collections import OrderedDict
-from . import run
-from . import tables
+from .run import Run
+from .tables import Tables
 
 
 class ParameterSet:
-    command_func = None
 
-    def __init__(self, ps_id, params):
-        self.id = ps_id
-        self.params = params
-        self.run_ids = []
+    def __init__(self, ps_id, simulator, params):
+        self._id = ps_id
+        self._sim_id = simulator.id()
+        self._params = params
+        self._run_ids = []
 
-    @classmethod
-    def set_command_func(cls, f):
-        cls.command_func = f
+    def id(self):
+        return self._id
 
-    def make_command(self, seed):
-        f = self.__class__.command_func
-        return f(self.params, seed)
+    def v(self):
+        return copy.deepcopy(self._params)
 
-    @classmethod
-    def find_or_create(cls, *params):
-        t = tables.Tables.get()
-        prm = tuple(params)
-        if len(params) == 1 and isinstance(params[0], tuple):
-            prm = params[0]
-        if prm in t.param_ps_dict:
-            return t.param_ps_dict[prm]
-        else:
-            next_id = len(t.ps_table)
-            ps = cls(next_id, prm)
-            t.ps_table.append(ps)
-            t.param_ps_dict[prm] = ps
-            return ps
-
-    def create_runs(self, num_runs):
-        created = [run.Run.create(self) for _ in range(num_runs)]
-        return created
+    def simulator(self):
+        return Tables.get().sim_table[self._sim_id]
 
     def create_runs_upto(self, target_num):
-        current = len(self.run_ids)
-        if target_num > current:
-            self.create_runs(target_num - current)
+        current = len(self._run_ids)
+        while target_num > current:
+            t = Tables.get()
+            next_id = len(t.tasks_table)
+            run = Run(next_id, self, current)
+            self._run_ids.append(run.id())
+            t.tasks_table.append(run)
+            current += 1
         return self.runs()[:target_num]
 
     def runs(self):
-        return [tables.Tables.get().tasks_table[rid] for rid in self.run_ids]
+        return [Tables.get().tasks_table[rid] for rid in self._run_ids]
 
     def finished_runs(self):
         return [r for r in self.runs() if r.is_finished()]
@@ -54,27 +42,24 @@ class ParameterSet:
         return all([r.is_finished() for r in self.runs()])
 
     def outputs(self):
-        runs = [r for r in self.finished_runs() if r.rc == 0]
-        if len(runs) == 0:
-            return []
-        else:
-            return [ r.output for r in runs ]
+        return [r.output() for r in self.finished_runs() if r.rc() == 0]
 
     def to_dict(self):
         o = OrderedDict()
-        o["id"] = self.id
-        o["params"] = self.params
-        o["run_ids"] = self.run_ids
+        o["id"] = self._id
+        o["sim_id"] = self._sim_id
+        o["params"] = self._params
+        o["run_ids"] = self._run_ids
         return o
 
     @classmethod
     def all(cls):
-        return tables.Tables.get().ps_table
+        return copy.copy(Tables.get().ps_table)  # shallow copy
 
     @classmethod
-    def find(cls, id):
-        return tables.Tables.get().ps_table[id]
+    def find(cls, ps_id):
+        return Tables.get().ps_table[ps_id]
 
     def dumps(self):
         runs_str = ",\n".join(["    " + r.dumps() for r in self.runs()])
-        return "{\"id\": %d, \"params\": %s, \"runs\": [\n%s\n]}" % (self.id, str(self.params), runs_str)
+        return "{\"id\": %d, \"params\": %s, \"runs\": [\n%s\n]}" % (self._id, str(self._params), runs_str)

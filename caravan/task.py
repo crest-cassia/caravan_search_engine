@@ -48,7 +48,7 @@ class Task:
         return copy.deepcopy(self._output)
 
     def is_finished(self):
-        return not (self._rc is None)
+        return self._rc is not None
 
     def store_result(self, output, rc, rank, start_at, finish_at):
         self._output = copy.deepcopy(output)

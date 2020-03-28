@@ -39,10 +39,10 @@ class Simulator:
         if key in t.param_ps_dict:
             return t.param_ps_dict[key]
         next_id = len(t.ps_table)
-        ps = ParameterSet(next_id, params)
+        ps = ParameterSet(next_id, self, params)
         t.ps_table.append(ps)
         t.param_ps_dict[key] = ps
-        t._ps_ids.append(ps.id())
+        self._ps_ids.append(ps.id())
         return ps
 
     def parameter_sets(self):
