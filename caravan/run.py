@@ -15,6 +15,9 @@ class Run(Task):
     def parameter_set(self):
         return Tables.get().ps_table[self._ps_id]
 
+    def seed(self):
+        return self._seed
+
     def to_dict(self):
         o = super().to_dict()
         o["ps_id"] = self._ps_id

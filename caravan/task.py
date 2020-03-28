@@ -85,7 +85,6 @@ class Task:
     def find(cls, id):
         return Tables.get().tasks_table[id]
 
-
     @classmethod
     def dump_binary(cls, path):
         import msgpack
