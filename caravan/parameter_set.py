@@ -9,6 +9,7 @@ class ParameterSet:
     def __init__(self, ps_id, simulator, params):
         self._id = ps_id
         self._sim_id = simulator.id()
+        assert isinstance(params, dict)
         self._params = params
         self._run_ids = []
 
