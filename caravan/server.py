@@ -230,13 +230,13 @@ class Server(object):
         for k in empty_keys: self.observed_all_ps.pop(k)
         return executed
 
-    def _exec_callback_for_task(self, task):
+    def _exec_callback_for_task(self,task):
         executed = False
         callbacks = self.observed_task[task.id()]
         while len(callbacks) > 0:
             self._logger.debug("executing callback for Task %d" % task.id())
             f = callbacks.pop(0)
-            f(task)
+            f()
             self._launch_all_fibers()
             executed = True
         self.observed_task.pop(task.id())
@@ -251,7 +251,7 @@ class Server(object):
             if all([Task.find(t).is_finished() for t in task_ids]):
                 self._logger.debug("executing callback for Tasks %s" % str(task_ids))
                 f = pair[1]
-                f(Task.find(t) for t in task_ids)
+                f()
                 to_be_removed.append(idx)
                 self._launch_all_fibers()
                 executed = True
