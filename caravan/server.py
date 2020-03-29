@@ -58,24 +58,24 @@ class Server(object):
 
     @classmethod
     def watch_ps(cls, ps, callback):
-        cls.get().observed_ps[ps.id].append(callback)
+        cls.get().observed_ps[ps.id()].append(callback)
 
     @classmethod
     def watch_all_ps(cls, ps_set, callback):
-        ids = [ps.id for ps in ps_set]
+        ids = [ps.id() for ps in ps_set]
         key = tuple(ids)
         cls.get().observed_all_ps[key].append(callback)
 
     @classmethod
     def watch_task(cls, task, callback):
-        cls.get().observed_task[task.id].append(callback)
+        cls.get().observed_task[task.id()].append(callback)
 
     @classmethod
     def watch_all_tasks(cls, tasks, callback):
-        key = tuple([t.id for t in tasks])
+        key = tuple([t.id() for t in tasks])
         for t in tasks:
             pair = (key, callback)
-            cls.get().observed_all_tasks[t.id].append(pair)
+            cls.get().observed_all_tasks[t.id()].append(pair)
 
     @classmethod
     def do_async(cls, func, *args, **kwargs):
@@ -181,7 +181,7 @@ class Server(object):
         self.max_submitted_task_id = len(Task.all())
 
     def _print_tasks(self, tasks):
-        b_tasks = [ {"id": t.id, "cmd": t.command, "input": t.input} for t in tasks ]
+        b_tasks = [ {"id": t.id(), "cmd": t.command(), "input": t.input()} for t in tasks ]
         packed = msgpack.packb(b_tasks)
         size_b = struct.pack('>q', len(packed))
         self._conn.sendall(size_b)
@@ -205,7 +205,7 @@ class Server(object):
             callbacks = self.observed_ps[psid]
             ps = ParameterSet.find(psid)
             while ps.is_finished() and len(callbacks) > 0:
-                self._logger.debug("executing callback for ParameterSet %d" % ps.id)
+                self._logger.debug("executing callback for ParameterSet %d" % ps.id())
                 f = callbacks.pop(0)
                 f(ps)
                 self._launch_all_fibers()
@@ -232,19 +232,19 @@ class Server(object):
 
     def _exec_callback_for_task(self, task):
         executed = False
-        callbacks = self.observed_task[task.id]
+        callbacks = self.observed_task[task.id()]
         while len(callbacks) > 0:
-            self._logger.debug("executing callback for Task %d" % task.id)
+            self._logger.debug("executing callback for Task %d" % task.id())
             f = callbacks.pop(0)
             f(task)
             self._launch_all_fibers()
             executed = True
-        self.observed_task.pop(task.id)
+        self.observed_task.pop(task.id())
         return executed
 
     def _exec_callback_for_all_task(self, task):
         executed = False
-        callback_pairs = self.observed_all_tasks[task.id]
+        callback_pairs = self.observed_all_tasks[task.id()]
         to_be_removed = []
         for (idx, pair) in enumerate(callback_pairs):
             task_ids = pair[0]
@@ -258,7 +258,7 @@ class Server(object):
         for idx in to_be_removed:
             callback_pairs.pop(idx)
         if len(callback_pairs) == 0:
-            self.observed_all_tasks.pop(task.id)
+            self.observed_all_tasks.pop(task.id())
         return executed
 
     def _receive_bytes(self, n):
