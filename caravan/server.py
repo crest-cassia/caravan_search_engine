@@ -93,7 +93,7 @@ class Server(object):
         self = cls.get()
         fb = Fiber.current()
 
-        def _callback(ps):
+        def _callback():
             self._fibers.append(fb)
 
         cls.watch_ps(ps, _callback)
@@ -104,7 +104,7 @@ class Server(object):
         self = cls.get()
         fb = Fiber.current()
 
-        def _callback(pss):
+        def _callback():
             self._fibers.append(fb)
 
         cls.watch_all_ps(ps_set, _callback)
@@ -115,7 +115,7 @@ class Server(object):
         self = cls.get()
         fb = Fiber.current()
 
-        def _callback(ps):
+        def _callback():
             self._fibers.append(fb)
 
         cls.watch_task(task, _callback)
@@ -126,7 +126,7 @@ class Server(object):
         self = cls.get()
         fb = Fiber.current()
 
-        def _callback(ts):
+        def _callback():
             self._fibers.append(fb)
 
         cls.watch_all_tasks(tasks, _callback)
@@ -207,7 +207,7 @@ class Server(object):
             while ps.is_finished() and len(callbacks) > 0:
                 self._logger.debug("executing callback for ParameterSet %d" % ps.id())
                 f = callbacks.pop(0)
-                f(ps)
+                f()
                 self._launch_all_fibers()
                 executed = True
         empty_keys = [k for k, v in self.observed_ps.items() if len(v) == 0]
@@ -223,7 +223,7 @@ class Server(object):
             while len(callbacks) > 0 and all([ps.is_finished() for ps in pss]):
                 self._logger.debug("executing callback for ParameterSet %s" % repr(psids))
                 f = callbacks.pop(0)
-                f(pss)
+                f()
                 self._launch_all_fibers()
                 executed = True
         empty_keys = [k for k, v in self.observed_all_ps.items() if len(v) == 0]
