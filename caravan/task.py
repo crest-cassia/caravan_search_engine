@@ -86,6 +86,16 @@ class Task:
         return Tables.get().tasks_table[id]
 
     @classmethod
+    def reset_cancelled(cls):
+        for t in cls.all():
+            if t._rank == -1:
+                t._rc = None
+                t._rank = None
+                t._start_at = None
+                t._finish_at = None
+                t._output = None
+
+    @classmethod
     def dump_binary(cls, path):
         import msgpack
         with open(path, 'wb') as f:
